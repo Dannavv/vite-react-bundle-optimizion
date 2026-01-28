@@ -1,0 +1,240 @@
+import { useState, useEffect } from 'react';
+
+// OPTIMIZATION LEVEL 2: Dynamic import of heavy library
+// Library is now loaded ONLY when this component mounts, not at build time
+type CountryType = { isoCode: string; name: string };
+type StateType = { isoCode: string; name: string };
+type CityType = { name: string };
+
+export default function AddProduct() {
+    const [formData, setFormData] = useState({
+        name: '',
+        price: '',
+        description: '',
+        country: '',
+        state: '',
+        city: '',
+    });
+
+    const [selectedCountry, setSelectedCountry] = useState<CountryType | null>(null);
+    const [selectedState, setSelectedState] = useState<StateType | null>(null);
+
+    // Dynamic data loading
+    const [countries, setCountries] = useState<CountryType[]>([]);
+    const [states, setStates] = useState<StateType[]>([]);
+    const [cities, setCities] = useState<CityType[]>([]);
+    const [isLoadingData, setIsLoadingData] = useState(true);
+
+    // OPTIMIZATION: Load country-state-city library dynamically
+    useEffect(() => {
+        import('country-state-city').then((module) => {
+            setCountries(module.Country.getAllCountries());
+            setIsLoadingData(false);
+        });
+    }, []);
+
+    // Update states when country changes
+    useEffect(() => {
+        if (selectedCountry) {
+            import('country-state-city').then((module) => {
+                setStates(module.State.getStatesOfCountry(selectedCountry.isoCode));
+            });
+        } else {
+            setStates([]);
+        }
+    }, [selectedCountry]);
+
+    // Update cities when state changes
+    useEffect(() => {
+        if (selectedCountry && selectedState) {
+            import('country-state-city').then((module) => {
+                setCities(module.City.getCitiesOfState(selectedCountry.isoCode, selectedState.isoCode));
+            });
+        } else {
+            setCities([]);
+        }
+    }, [selectedCountry, selectedState]);
+
+    const handleCountryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const country = countries.find(c => c.isoCode === e.target.value);
+        setSelectedCountry(country || null);
+        setSelectedState(null);
+        setFormData({ ...formData, country: country?.name || '', state: '', city: '' });
+    };
+
+    const handleStateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const state = states.find(s => s.isoCode === e.target.value);
+        setSelectedState(state || null);
+        setFormData({ ...formData, state: state?.name || '', city: '' });
+    };
+
+    const handleCityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        setFormData({ ...formData, city: e.target.value });
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        console.log('Product data:', formData);
+        alert('Product added! Check console for data.');
+    };
+
+    return (
+        <div className="max-w-3xl mx-auto py-6 sm:px-6 lg:px-8">
+            <div className="px-4 py-6 sm:px-0">
+                <div className="mb-6">
+                    <h1 className="text-3xl font-bold text-gray-900">Add New Product</h1>
+                    <p className="mt-2 text-sm text-gray-600">
+                        This is a <span className="font-semibold text-green-600">OPTIMIZED PAGE</span> - dynamically loads country-state-city
+                    </p>
+                </div>
+
+                <div className="bg-white shadow sm:rounded-lg">
+                    {isLoadingData ? (
+                        <div className="px-4 py-12 sm:p-6 text-center">
+                            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                            <p className="mt-4 text-sm text-gray-600">Loading location data...</p>
+                            <p className="mt-2 text-xs text-gray-500">Dynamically importing country-state-city library</p>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleSubmit} className="px-4 py-5 sm:p-6 space-y-6">
+                            {/* Product Name */}
+                            <div>
+                                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                                    Product Name
+                                </label>
+                                <input
+                                    type="text"
+                                    id="name"
+                                    required
+                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                />
+                            </div>
+
+                            {/* Price */}
+                            <div>
+                                <label htmlFor="price" className="block text-sm font-medium text-gray-700">
+                                    Price
+                                </label>
+                                <input
+                                    type="number"
+                                    id="price"
+                                    required
+                                    step="0.01"
+                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                    value={formData.price}
+                                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                                />
+                            </div>
+
+                            {/* Description */}
+                            <div>
+                                <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                                    Description
+                                </label>
+                                <textarea
+                                    id="description"
+                                    rows={3}
+                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                    value={formData.description}
+                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="border-t border-gray-200 pt-6">
+                                <h3 className="text-lg font-medium text-gray-900 mb-4">Inventory Location</h3>
+
+                                {/* Country Dropdown */}
+                                <div className="mb-4">
+                                    <label htmlFor="country" className="block text-sm font-medium text-gray-700">
+                                        Country ({countries.length} countries loaded)
+                                    </label>
+                                    <select
+                                        id="country"
+                                        required
+                                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                        value={selectedCountry?.isoCode || ''}
+                                        onChange={handleCountryChange}
+                                    >
+                                        <option value="">Select a country</option>
+                                        {countries.map((country) => (
+                                            <option key={country.isoCode} value={country.isoCode}>
+                                                {country.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* State Dropdown */}
+                                {selectedCountry && (
+                                    <div className="mb-4">
+                                        <label htmlFor="state" className="block text-sm font-medium text-gray-700">
+                                            State/Province ({states.length} available)
+                                        </label>
+                                        <select
+                                            id="state"
+                                            required
+                                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            value={selectedState?.isoCode || ''}
+                                            onChange={handleStateChange}
+                                        >
+                                            <option value="">Select a state</option>
+                                            {states.map((state) => (
+                                                <option key={state.isoCode} value={state.isoCode}>
+                                                    {state.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                {/* City Dropdown */}
+                                {selectedState && (
+                                    <div className="mb-4">
+                                        <label htmlFor="city" className="block text-sm font-medium text-gray-700">
+                                            City ({cities.length} available)
+                                        </label>
+                                        <select
+                                            id="city"
+                                            required
+                                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            value={formData.city}
+                                            onChange={handleCityChange}
+                                        >
+                                            <option value="">Select a city</option>
+                                            {cities.map((city) => (
+                                                <option key={city.name} value={city.name}>
+                                                    {city.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="pt-5">
+                                <button
+                                    type="submit"
+                                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                >
+                                    Add Product
+                                </button>
+                            </div>
+                        </form>
+                    )}
+                </div>
+
+                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
+                    <p className="text-xs text-green-800">
+                        <strong>✅ OPTIMIZED VERSION:</strong> This page uses dynamic import() for country-state-city library.
+                        The library is loaded ONLY when you visit this page, not bundled with the main app!
+                    </p>
+                    <p className="text-xs text-green-600 mt-2">
+                        <strong>Result:</strong> Login page users don't download this heavy library anymore!
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+}
