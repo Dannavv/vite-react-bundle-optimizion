@@ -1,4 +1,4 @@
-# 📦 Vite React Bundle Optimization Demo
+# 📦 Vite React Bundle Optimization
 
 > **A side-by-side demonstration of bundle optimization techniques that reduce initial JavaScript payload from 9MB+ to ~234KB**
 
